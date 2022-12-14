@@ -1,10 +1,10 @@
 extern crate clap;
 use clap::Parser;
-use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path};
+use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path, ops::Add};
 
 //clap3.0.0版本用 `help`代替了`about`
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[clap(version = "0.1", about = "cat - concatenate files and print on the standard output", author = "Franck <franckcl@icloud.com>")]
 struct Opts {
     #[clap(short = 'A', long = "--show-all", help = "equivalent to -vET")]
@@ -42,17 +42,22 @@ fn main() {
 }
 
 fn do_cat(cmd : Opts) {
+    let copy_cmd = cmd.clone();
+
     match cmd.file {
         //(1)读取文件
         Some(f) => {
             //读取文件所有行
             if let Ok(lines) = open_read_lines(f) {
-                // 循环输出文件的每行
-                for line in lines {
-                    if let Ok(s) = line {
-                        println!("{}", s);
-                    }
-                }
+                // (1)直接输出: 循环输出文件的每行
+                // for line in lines {
+                //     if let Ok(s) = line {
+                //         println!("{}", s);
+                //     }
+                // }
+
+                //(2) 带输出逻辑：行号、空行合并、TAB 替换、行尾 $
+                do_show(copy_cmd, lines);
             }
         }
         
@@ -83,6 +88,37 @@ fn do_cat(cmd : Opts) {
     }
 }
 
+fn do_show(cmd : Opts, lines: Lines<BufReader<File>>) {
+    // 创建 handle_shows 的 Vec<handle>
+    let mut handle: Vec<fn(Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>>> = Vec::new();
+    // 如果 -E 压入 show_ends 函数
+    if cmd.show_ends {
+        handle.push(show_ends);
+    }
+    // 如果 -T 压入 show_tabs 函数
+    if cmd.show_tabs {
+        handle.push(show_tabs);
+    }
+    // 如果 -s 压入 squeeze_blank 函数
+    if cmd.squeeze_blank {
+        handle.push(squeeze_blank);
+    }
+    if cmd.number_non_blank {
+        // 如果 -b 压入 number_non_blank 函数
+        handle.push(number_non_blank);
+    } else {
+        if cmd.number {
+            // 如果 -n 压入 number 函数
+            handle.push(number);
+        }
+    }
+
+    //FLAG-Ryan: Box是智能指针
+    for line in handle_shows(Box::new(lines.filter(|x| x.is_ok()).map(|x| x.unwrap())), handle) {
+        println!("{}", line);
+    }
+}
+
 //----------------
 //实现打开文件与读取文件逻辑
 //----------------
@@ -93,4 +129,37 @@ fn open_read_lines<P>(file: P) -> io::Result<Lines<BufReader<File>>> where P: As
     // 使用 BufReader 缓冲区加速大文件反复读取速度
     let lines = BufReader::new(f).lines();
     Ok(lines)
+}
+
+//----------------
+//实现输出逻辑：行号、空行合并、TAB 替换、行尾 $
+//----------------
+
+// TAB 替换函数，接收、输出都使用 Trait Object 简化
+fn show_tabs(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
+    Box::new(lines.map(|x| x.replace("\t", "^I")))
+}
+// 行尾$ 函数，接收、输出都使用 Trait Object 简化
+fn show_ends(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
+    Box::new(lines.map(|x| x.add("$")))
+}
+// 行号非空，接收、输出都使用 Trait Object 简化
+fn number_non_blank(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
+    Box::new(lines.enumerate().map(|(x, y)| if y.is_empty() || y.eq("$") { y } else { format!("    {}    {}", x + 1, y) }))
+}
+// 行号为空,接收、输出都使用 Trait Object 简化
+fn number(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
+    Box::new(lines.enumerate().map(|(x, y)| format!("    {}    {}", x + 1, y)))
+}
+// 合并空行，接收、输出都使用 Trait Object 简化
+fn squeeze_blank(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
+    Box::new(lines.filter(|x| !x.is_empty() && !x.eq("$")))
+}
+// 处理函数，接收一个 Vec 循环调用 Next 函数 对迭代器进行处理
+fn handle_shows(lines: Box<dyn Iterator<Item=String>>, handle: Vec<fn(Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>>>) -> Box<dyn Iterator<Item=String>> {
+    let mut lines = lines;
+    for f in handle { //handle是各种要执行的处理函数
+        lines = f(lines)
+    }
+    lines
 }

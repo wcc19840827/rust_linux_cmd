@@ -11,18 +11,40 @@ cargo build
 ```bash
 ./target/debug/cat --help
 ```
-> 在终端上输出一行文本
+> 连接文件并在标准输出上打印
 
 ### 主要参数
 ```bash
-#不输出文本末尾的换行符
--n	 	do not output the trailing newline
+# 显示所有 相当于 -vET
+-A, --show-all equivalent to -vET
 
-#使用文本中的转义标记
--e 	enable interpretation of backslash escapes
+# 显示非空行的行号 会覆盖 -n参数
+-b, --number-nonblank number nonempty output lines, overrides -n
 
-#不使用文本中的转义标记（默认）
--E 	disable interpretation of backslash escapes (default)
+# 相当于 -vE
+-e equivalent to -vE
+
+# 行尾显示符号 $
+-E, --show-ends display $ at end of each line
+
+# 显示所有行的行号 包括空行
+-n, --number number all output lines
+
+# 临近的空行只输出一行
+-s, --squeeze-blank suppress repeated empty output lines
+
+# 相当于 -vT
+-t equivalent to -vT
+
+# 将TAB符显示为 ^|
+-T, --show-tabs display TAB characters as ^I
+
+# 忽略
+-u (ignored)
+
+# 显示 ^ 与 M- 的符号 除 LFD 与 TAB 之外
+-v, --show-nonprinting use ^ and M- notation, except for LFD and TAB
+
 ```
 
 ### 用例
@@ -32,5 +54,6 @@ clear; cargo build; ./target/debug/cat > ./test << EOF
 
 # 读取文件内容
 clear; cargo build; ./target/debug/cat ./test
+clear; cargo build; ./target/debug/cat -E ./test
 
 ```
