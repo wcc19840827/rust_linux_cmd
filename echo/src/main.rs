@@ -173,11 +173,13 @@ fn recognize(s: &str, enable_escapes: bool) -> String {
 fn fn_output(output: &str, newline: bool) {
     let mut width = 0;
     let mut result: String = String::new();
+    
     // 通过split将包含 \f 标记的文本分割
     let vec_output = output
         .split("\\f")
         .filter(|x| *x != "")
         .collect::<Vec<&str>>();
+        
     // 根据标记分割的字符长度格式化输出，这里为了 -n 判断省事 用write!写字符串
     for i in 0..vec_output.len() {
         width += vec_output[i].len();
