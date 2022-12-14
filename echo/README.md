@@ -9,9 +9,6 @@ cargo build
 
 ### 命令解析
 ```bash
-cargo run --help
-
-# or
 ./target/debug/echo --help
 ```
 > 在终端上输出一行文本

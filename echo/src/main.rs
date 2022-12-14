@@ -1,14 +1,17 @@
 extern crate clap;
-use clap::Parser;
+use clap::{Parser};
 
 fn main() {
-    println!("Hello, world!");
+    let opt = Opts::from_args();
+    println!("{:#?}", opt);
+    // println!("Hello, world!");
+
 }
 
 
 #[derive(Parser, Debug)]
 // 定义命令 版本、介绍、作者 等信息
-#[clap(version = "0.1", about = "echo - display a line of text", author = "Franck <franckcl@icloud.com>")]
+#[clap(version = "0.1", about = "echo - display a line of text", author = "Ryan <wcc19840827@126.com>")]
 // 定义命令 结构
 struct Opts {
     // 定义 -n 参数的短写法以及说明 这里使用 flag 类型为 bool
