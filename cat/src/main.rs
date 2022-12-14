@@ -1,6 +1,6 @@
 extern crate clap;
 use clap::Parser;
-use std::io;
+use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path};
 
 //clap3.0.0版本用 `help`代替了`about`
 
@@ -38,16 +38,29 @@ fn main() {
     let cmd = Opts::from_args();
     // println!("{:?}", cmd);
 
+    do_cat(cmd);
+}
+
+fn do_cat(cmd : Opts) {
     match cmd.file {
+        //(1)读取文件
         Some(f) => {
-            todo!();
+            //读取文件所有行
+            if let Ok(lines) = open_read_lines(f) {
+                // 循环输出文件的每行
+                for line in lines {
+                    if let Ok(s) = line {
+                        println!("{}", s);
+                    }
+                }
+            }
         }
         
-        // 手动输入内容,直接输入`EOF`为止
+        //(2)手动输入内容,直到输入`EOF`为止
         // 处理 cat << EOF > FILE 
         None => {
             // 打开标准输入
-            let mut stdin = io::stdin();
+            let stdin = io::stdin();
             // 循环处理输入的字符
             loop {
                 let mut buffer = String::new();
@@ -61,7 +74,7 @@ fn main() {
                         print!("{}", buffer);
                     }
                     Err(e) => {
-                        println!("Err:{}", e);
+                        println!("Err:{:?}", e);
                         // Err(e)
                     }
                 }
@@ -70,6 +83,14 @@ fn main() {
     }
 }
 
-// fu doCat(file: Option<String>) {
+//----------------
+//实现打开文件与读取文件逻辑
+//----------------
 
-// }
+// 定义一个函数接收一个 实现 AsRef<Path>的泛型 参数，返回一个 BufRead 的 Lines 迭代器
+fn open_read_lines<P>(file: P) -> io::Result<Lines<BufReader<File>>> where P: AsRef<Path> {
+    let f = File::open(file)?;
+    // 使用 BufReader 缓冲区加速大文件反复读取速度
+    let lines = BufReader::new(f).lines();
+    Ok(lines)
+}

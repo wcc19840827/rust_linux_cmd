@@ -27,6 +27,10 @@ cargo build
 
 ### 用例
 ```bash
+# 手动输入内容,直到输入`EOF`为止
 clear; cargo build; ./target/debug/cat > ./test << EOF
+
+# 读取文件内容
+clear; cargo build; ./target/debug/cat ./test
 
 ```
