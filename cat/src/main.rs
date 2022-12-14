@@ -1,3 +1,8 @@
+/**
+ * cat 的实现涉及格式化输出、文件读取以及迭代器相关方法的使用，还用到了 Trait Object 来组合多个函数的调用。
+ * 标准库很实在、函数式跟抽象能力很不错，但上手难度还是比较高
+ */
+
 extern crate clap;
 use clap::Parser;
 use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path, ops::Add};
@@ -89,8 +94,9 @@ fn do_cat(cmd : Opts) {
 }
 
 fn do_show(cmd : Opts, lines: Lines<BufReader<File>>) {
-    // 创建 handle_shows 的 Vec<handle>
+    // 创建 handle_shows 的 Vec<handle> (用于保存函数对象)
     let mut handle: Vec<fn(Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>>> = Vec::new();
+
     // 如果 -E 压入 show_ends 函数
     if cmd.show_ends {
         handle.push(show_ends);
