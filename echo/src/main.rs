@@ -32,11 +32,12 @@ struct Opts {
 }
 
 fn main() {
+    //读取命令行参数
     let opt = Opts::from_args();
 
     let tmp = opt.text;
     match &tmp {
-        Some(text) => fn_output(&recognize(&text)), //println!("{:#?}", recognize(&text)),
+        Some(text) => fn_output(&recognize(&text, opt.flag_enable_escapes), !opt.flag_newline), //println!("{:#?}", recognize(&text)),
         None => println!("Hello, world!"),          //panic!(), //"".to_string(),
     };
 }
@@ -46,11 +47,17 @@ fn main() {
 //------------------------
 
 // 这里定义一个函数来进行处理，接收一个 &str 类型，返回一个 String类型
-fn recognize(s: &str) -> String {
+fn recognize(s: &str, enable_escapes: bool) -> String {
+    if  !enable_escapes {
+        return s.to_string();
+    }
+
     // 为了兼顾一些内存占用和性能，这里转换为字符向量在原地进行处理
     let mut chars = s.chars().collect::<Vec<char>>();
-    let nil = char::default();
+
+    let nil = char::default();//站位的标记
     let index_max = chars.len() - 1;
+    
     // 通过下标循环，依次进行标记的匹配和处理，其实这里使用正则或者宏或者解析器会更好，因为尽量使用标准库以及宏我不会
     // 所以写的很啰嗦，但是逻辑比较容易理解
     for i in 0..chars.len() {
@@ -61,10 +68,12 @@ fn recognize(s: &str) -> String {
                 ('\\', '0') => {
                     todo!()
                 }
+
                 ('\\', 'a') => {
                     chars[i] = nil;
                     chars[i + 1] = nil;
                 }
+                
                 // \b 情况比较特殊，其他标记是向后匹配和处理，它是向前
                 ('\\', 'b') => {
                     if i >= 1 && (i + 1) < index_max {
@@ -83,10 +92,13 @@ fn recognize(s: &str) -> String {
                     chars[i] = nil;
                     chars[i + 1] = nil;
                 }
+                
                 ('\\', 'c') => {
                     return chars[0..i].iter().filter(|x| **x != nil).collect();
                 }
-                // \e 标记的逻辑处理，因为不是替换所以需要再匹配到 \e 之后再匹配余下的标记，然后根据顺序强弱
+                
+                //删除标志之后的字符
+                // \e 标记的逻辑处理，因为不是替换, 所以需要再匹配到 \e 之后再匹配余下的标记，然后根据顺序强弱
                 // 分别处理，这里因为\0 和 \x 先不做实现所以置空了
                 ('\\', 'e') => {
                     chars[i] = nil;
@@ -149,6 +161,7 @@ fn recognize(s: &str) -> String {
             }
         }
     }
+
     // 替换与处理完成后将使用char::default()站位的标记去掉，转换成 String 返回
     chars.iter().filter(|x| **x != nil).collect()
 }
@@ -157,10 +170,9 @@ fn recognize(s: &str) -> String {
 //格式化输出
 //------------------------
 
-fn fn_output(output: &str) {
+fn fn_output(output: &str, newline: bool) {
     let mut width = 0;
     let mut result: String = String::new();
-    // let newline = false;
     // 通过split将包含 \f 标记的文本分割
     let vec_output = output
         .split("\\f")
@@ -193,9 +205,10 @@ fn fn_output(output: &str) {
             }
         }
     }
-    // if newline {
-    // print!("{}", result);
-    // } else {
-    println!("{}", result);
-    // }
+    
+    if newline {
+        print!("{}", result);
+    } else {
+        println!("{}", result); //不输出换行符
+    }
 }
