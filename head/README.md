@@ -27,7 +27,7 @@ cargo build
 -c, --bytes=[-]K
 
 # print the first K lines instead of the first 10; with the leading '-', print all but the last K lines of each file
-# 打印前 K 行而不是前 10 行；以'-'开头，打印除每个文件的最后 K 行以外的所有行
+# 打印前 K 行而不是前 10 行；以'-'开头，打印除每个文件的最后 K 行以外的所有行 (目前只实现这个)
 -n, --lines=[-]K
 
 # never print headers giving file names
@@ -42,11 +42,11 @@ cargo build
 
 ### 用例
 ```bash
-# 手动输入内容,直到输入`EOF`为止
-clear; cargo build; ./target/debug/head > /tmp/test << EOF
+# 读取文件有几行
+./target/debug/head README.md
+./target/debug/head -n=5 README.md
 
-# 读取文件内容
-clear; cargo build; ./target/debug/head /tmp/test
-clear; cargo build; ./target/debug/head -E /tmp/test
+## 多文件
+./target/debug/head -n=5 -v README.md Cargo.toml
 
 ```
