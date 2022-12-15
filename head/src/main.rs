@@ -5,7 +5,7 @@
 
 extern crate clap;
 use clap::Parser;
-use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path, ops::Add};
+use std::{io::{self, BufReader, BufRead}, fs::File, path::Path};
 
 //clap3.0.0版本用 `help`代替了`about`
 
@@ -36,7 +36,7 @@ fn main() {
 }
 
 fn do_head(cmd : Opts) {
-    let copy_cmd = cmd.clone();
+    // let copy_cmd = cmd.clone();
 
     // 逻辑跟 cat 那个实现一样，只不过判断的条件不同，这里判断 INPUT 的长度跟第一个元素是不是 `-`
     if cmd.input.len() >= 1 && cmd.input[0] != "-" {
@@ -44,7 +44,7 @@ fn do_head(cmd : Opts) {
         do_show(cmd);//copy_cmd
     } else {
         //INPUT为 - 或空
-        let mut stdin = io::stdin();
+        let stdin = io::stdin(); //变量默认是不可改变
         loop {
             let mut buffer = String::new();
             match stdin.read_line(&mut buffer) {
@@ -55,7 +55,8 @@ fn do_head(cmd : Opts) {
                     print!("{}", buffer);
                 }
                 Err(e) => {
-                    Err(e)
+                    // Err(e)
+                    println!("Err:{:?}", e);
                 }
             }
         }
@@ -94,7 +95,8 @@ fn do_show(cmd : Opts) {
 }
 
 // -n lines 处理 返回裁剪后的迭代器 这里有 i32 转换 usize 所以是一个 Result<String>
-fn n_lines<P>(file: P, each: i32) -> Result<Box<dyn Iterator<Item=Result<String>>>> where P: AsRef<Path> {
+fn n_lines<P>(file: P, each: i32) -> io::Result<Box<dyn Iterator<Item=io::Result<String>>>> where P: AsRef<Path> {
+    // io::Result<Lines<BufReader<File>>> where P: AsRef<Path>
     let f = File::open(file)?;
     let len_f = f.try_clone()?;
     // clone 一份用于获取总行数，这里不能 clone BufReader 不然会导致 buffer 失效无法获取文件内容
