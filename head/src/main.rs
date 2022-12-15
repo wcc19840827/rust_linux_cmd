@@ -9,83 +9,83 @@ use std::{io::{self, Lines, BufReader, BufRead}, fs::File, path::Path, ops::Add}
 
 //clap3.0.0版本用 `help`代替了`about`
 
-#[derive(Parser, Debug, Clone)]
-#[clap(version = "0.1", about = "cat - concatenate files and print on the standard output", author = "Franck <franckcl@icloud.com>")]
+#[derive(Debug, Parser)]
+#[clap(version = "0.1", about = "head - output the first part of files", author = "Franck <franckcl@icloud.com>")]
 struct Opts {
-    #[clap(short = 'A', long = "--show-all", help = "equivalent to -vET")]
-    show_all: bool,
-    #[clap(short = 'b', long = "--number-nonblank", help = "number nonempty output lines, overrides -n")]
-    number_non_blank: bool,
-    #[clap(short = 'e', help = "equivalent to -vE")]
-    ve: bool,
-    #[clap(short = 'E', long = "--show-ends", help = "display $ at end of each line")]
-    show_ends: bool,
-    #[clap(short = 'n', long = "--number", help = "number all output lines")]
-    number: bool,
-    #[clap(short = 's', long = "--squeeze-blank", help = "suppress repeated empty output lines")]
-    squeeze_blank: bool,
-    #[clap(short = 't', help = "equivalent to -vT")]
-    vt: bool,
-    #[clap(short = 'T', long = "--show-tabs", help = "display TAB characters as ^I")]
-    show_tabs: bool,
-    #[clap(short = 'u', help = "(ignored)")]
-    ignored: bool,
-    #[clap(short = 'v', long = "--show-nonprinting", help = "use ^ and M- notation, except for LFD and TAB")]
-    show_non_printing: bool,
-    // 这里其实应该使用 Vec<String> 来存储多个参数，因为是核心功能的简单实现而且多文件或者通配符的情况难免要引入
-    // 外部的crate，毕竟这个自己来实现可能会比较多，所以这里简单来只处理一个文件
+    // 涉及保存参数值以及重复使用参数 这里使用 Option Arguments ，参数指定为 Option<Vec<i32>> 同时添加 required 和 multiple_occurrences
+    #[clap(required = false, short = 'c', long = "bytes", name = "[-]K", multiple_occurrences = true, help = "print the first K bytes of each file; with the leading '-', print all but the last K bytes of each file")]
+    c_bytes: Option<Vec<i32>>,
+    // 除了与 -c 相同的属性之外 -n 的默认值是 10 这里指定默认值
+    #[clap(required = false, short = 'n', long = "lines", default_value = "10", name = "[-N]", multiple_occurrences = true, help = "print the first N lines instead of the first 10; with the leading '-', print all but the last N lines of each file")]
+    n_lines: Option<Vec<i32>>,
+    #[clap(short = 'q', long = "quiet", multiple_occurrences = true, help = "never print headers giving file names")]
+    q_quiet: bool,
+    #[clap(short = 'v', long = "verbose", multiple_occurrences = true, help = "always print headers giving file names")]
+    v_verbose: bool,
+    // 支持多参数 Vec<String>
     #[clap(name = "FILE")]
-    file: Option<String>,
+    input: Vec<String>,
 }
 
 fn main() {
     //读取命令行参数
     let cmd = Opts::from_args();
-    // println!("{:?}", cmd);
+    println!("{:?}", cmd);
 
-    do_cat(cmd);
+    // do_head(cmd);
 }
 
-fn do_cat(cmd : Opts) {
+fn do_head(cmd : Opts) {
     let copy_cmd = cmd.clone();
 
-    match cmd.file {
-        //(1)读取文件
-        Some(f) => {
-            //读取文件所有行
-            if let Ok(lines) = open_read_lines(f) {
-                // (1)直接输出: 循环输出文件的每行
-                // for line in lines {
-                //     if let Ok(s) = line {
-                //         println!("{}", s);
-                //     }
-                // }
-
-                //(2) 带输出逻辑：行号、空行合并、TAB 替换、行尾 $
-                do_show(copy_cmd, lines);
+    // 逻辑跟 cat 那个实现一样，只不过判断的条件不同，这里判断 INPUT 的长度跟第一个元素是不是 `-`
+    if cmd.input.len() >= 1 && cmd.input[0] != "-" {
+        //INPUT为 输入文件
+        do_show(cmd);//copy_cmd
+    } else {
+        //INPUT为 - 或空
+        let mut stdin = io::stdin();
+        loop {
+            let mut buffer = String::new();
+            match stdin.read_line(&mut buffer) {
+                Ok(_) => {
+                    if buffer.is_empty() {
+                        break;
+                    }
+                    print!("{}", buffer);
+                }
+                Err(e) => {
+                    Err(e)
+                }
             }
         }
-        
-        //(2)手动输入内容,直到输入`EOF`为止
-        // 处理 cat << EOF > FILE 
-        None => {
-            // 打开标准输入
-            let stdin = io::stdin();
-            // 循环处理输入的字符
-            loop {
-                let mut buffer = String::new();
-                match stdin.read_line(&mut buffer) {
-                    Ok(_) => {
-                        // 无输入之后返回
-                        if buffer.is_empty() {
-                            break;
+    }
+}
+
+//----------------
+//输出逻辑处理
+//----------------
+
+fn do_show(cmd : Opts) {
+    // 获取命令行参数 执行输出
+    if let Some(n) = cmd.n_lines {
+        for f in cmd.input {
+            // 输出文件名
+            if cmd.v_verbose {
+                println!("==> {} <==", f);
+            }
+            if n.len() != 0 {
+                // 获取最后一个 -n 参数
+                let read_lines = n_lines(f, n[n.len() - 1]);
+                match read_lines {
+                    Ok(lines) => {
+                        // 输出文件内容 这里其实直接 unwrap 也是可以的 i32 abs as uniz
+                        for line in lines {
+                            println!("{}", line.unwrap_or("".into()));
                         }
-                        // 这里要用 print! 不能用 println! 不然会出现空行的情况
-                        print!("{}", buffer);
                     }
                     Err(e) => {
-                        println!("Err:{:?}", e);
-                        // Err(e)
+                        println!("{}", e);
                     }
                 }
             }
@@ -93,79 +93,26 @@ fn do_cat(cmd : Opts) {
     }
 }
 
-fn do_show(cmd : Opts, lines: Lines<BufReader<File>>) {
-    // 创建 handle_shows 的 Vec<handle> (用于保存函数对象)
-    let mut handle: Vec<fn(Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>>> = Vec::new();
-
-    // 如果 -E 压入 show_ends 函数
-    if cmd.show_ends {
-        handle.push(show_ends);
-    }
-    // 如果 -T 压入 show_tabs 函数
-    if cmd.show_tabs {
-        handle.push(show_tabs);
-    }
-    // 如果 -s 压入 squeeze_blank 函数
-    if cmd.squeeze_blank {
-        handle.push(squeeze_blank);
-    }
-    if cmd.number_non_blank {
-        // 如果 -b 压入 number_non_blank 函数
-        handle.push(number_non_blank);
-    } else {
-        if cmd.number {
-            // 如果 -n 压入 number 函数
-            handle.push(number);
+// -n lines 处理 返回裁剪后的迭代器 这里有 i32 转换 usize 所以是一个 Result<String>
+fn n_lines<P>(file: P, each: i32) -> Result<Box<dyn Iterator<Item=Result<String>>>> where P: AsRef<Path> {
+    let f = File::open(file)?;
+    let len_f = f.try_clone()?;
+    // clone 一份用于获取总行数，这里不能 clone BufReader 不然会导致 buffer 失效无法获取文件内容
+    let lines = BufReader::new(f).lines();
+    match each {
+        // 正数从开头获取
+        n if n > 0 => {
+            Ok(Box::new(lines.take(n as usize)))
+        }
+        // 负数从结尾去除
+        n if n < 0 => {
+            let len = BufReader::new(len_f).lines().count();
+            Ok(Box::new(lines.take(len - n.abs() as usize)))
+        }
+        // 零返回None
+        _ => {
+            let len = BufReader::new(len_f).lines().count();
+            Ok(Box::new(lines.skip(len)))
         }
     }
-
-    //FLAG-Ryan: Box是智能指针
-    for line in handle_shows(Box::new(lines.filter(|x| x.is_ok()).map(|x| x.unwrap())), handle) {
-        println!("{}", line);
-    }
-}
-
-//----------------
-//实现打开文件与读取文件逻辑
-//----------------
-
-// 定义一个函数接收一个 实现 AsRef<Path>的泛型 参数，返回一个 BufRead 的 Lines 迭代器
-fn open_read_lines<P>(file: P) -> io::Result<Lines<BufReader<File>>> where P: AsRef<Path> {
-    let f = File::open(file)?;
-    // 使用 BufReader 缓冲区加速大文件反复读取速度
-    let lines = BufReader::new(f).lines();
-    Ok(lines)
-}
-
-//----------------
-//实现输出逻辑：行号、空行合并、TAB 替换、行尾 $
-//----------------
-
-// TAB 替换函数，接收、输出都使用 Trait Object 简化
-fn show_tabs(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
-    Box::new(lines.map(|x| x.replace("\t", "^I")))
-}
-// 行尾$ 函数，接收、输出都使用 Trait Object 简化
-fn show_ends(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
-    Box::new(lines.map(|x| x.add("$")))
-}
-// 行号非空，接收、输出都使用 Trait Object 简化
-fn number_non_blank(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
-    Box::new(lines.enumerate().map(|(x, y)| if y.is_empty() || y.eq("$") { y } else { format!("    {}    {}", x + 1, y) }))
-}
-// 行号为空,接收、输出都使用 Trait Object 简化
-fn number(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
-    Box::new(lines.enumerate().map(|(x, y)| format!("    {}    {}", x + 1, y)))
-}
-// 合并空行，接收、输出都使用 Trait Object 简化
-fn squeeze_blank(lines: Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>> {
-    Box::new(lines.filter(|x| !x.is_empty() && !x.eq("$")))
-}
-// 处理函数，接收一个 Vec 循环调用 Next 函数 对迭代器进行处理
-fn handle_shows(lines: Box<dyn Iterator<Item=String>>, handle: Vec<fn(Box<dyn Iterator<Item=String>>) -> Box<dyn Iterator<Item=String>>>) -> Box<dyn Iterator<Item=String>> {
-    let mut lines = lines;
-    for f in handle { //handle是各种要执行的处理函数
-        lines = f(lines)
-    }
-    lines
 }
