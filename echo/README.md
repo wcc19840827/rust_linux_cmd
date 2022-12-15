@@ -27,7 +27,7 @@ cargo build
 
 ### 用例
 ```bash
-clear; cargo build; ./target/debug/echo "aaa\t123"
-clear; cargo build; ./target/debug/echo -n "aaa\t123"
-clear; cargo build; ./target/debug/echo -n -e "aaa\t123"
+./target/debug/echo "aaa\t123"
+./target/debug/echo -n "aaa\t123"
+./target/debug/echo -ne "aaa\t123"
 ```
