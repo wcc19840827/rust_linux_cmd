@@ -105,14 +105,14 @@ fn fn_lines<P>(file: P, each: i32) -> io::Result<Box<dyn Iterator<Item=io::Resul
     let lines = BufReader::new(f).lines();
 
     match each {
-        // 正数从结尾获取
+        // 正数从开头跳过n行
         n if n > 0 => {
+            Ok(Box::new(lines.skip(n as usize)))
+        }
+        // 负数从结尾去除
+        n if n < 0 => {
             let len = BufReader::new(len_f).lines().count();
             Ok(Box::new(lines.skip(len - n.abs() as usize)))
-        }
-        // 负数从开头获取
-        n if n < 0 => {
-            Ok(Box::new(lines.take(n.abs() as usize)))
         }
 
         // 零返回None

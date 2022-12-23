@@ -74,6 +74,7 @@ cargo build
 # 读取文件有几行
 ./target/debug/tail README.md
 ./target/debug/tail -n=5 README.md
+./target/debug/tail -n=-5 README.md
 
 ## 多文件
 ./target/debug/tail -n=5 -v README.md Cargo.toml
