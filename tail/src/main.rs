@@ -111,7 +111,7 @@ fn fn_lines<P>(file: P, each: i32) -> io::Result<Box<dyn Iterator<Item=io::Resul
         }
         // 负数从结尾去除
         n if n < 0 => {
-            let len = BufReader::new(len_f).lines().count();
+            let len = BufReader::new(len_f).lines().count();//FIXME:这样写会有问题
             Ok(Box::new(lines.skip(len - n.abs() as usize)))
         }
 
