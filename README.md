@@ -7,4 +7,5 @@
 ├── cat
 └── echo
 └── head
+└── tail
 ```
